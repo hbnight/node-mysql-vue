@@ -1,4 +1,4 @@
-# 用node+mysql+vue搭建一个人人博客
+# 用node+mysql+vue搭建一个个人博客
 ###### node/webpack/vue-cli/mysql默认已安装并配置完成
 
 
