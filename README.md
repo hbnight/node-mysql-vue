@@ -3,8 +3,20 @@
 
 
 ### 第一天
+###### (前后端同步开发,会有多次切换,根据个人习惯制定代码编辑方式)
 
-  选择目录初始化一个blogs项目
+新建一个文件夹 blogs_server并添加一个server.js文件
+安装express
+```
+npm i express -g
+```
+
+
+
+
+
+
+初始化一个blogs项目
 ```
 vue init webpack-simple blogs
 ```
@@ -12,6 +24,8 @@ vue init webpack-simple blogs
 ```
 cd blogs && npm i && npm run dev
 ```
+
+
 
 
 
