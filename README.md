@@ -4,11 +4,14 @@
 
 ### 第一天
 
-  选择目录初始化一个reg_product项目
+  选择目录初始化一个blogs项目
 ```
-vue init webpack-simple reg_product
+vue init webpack-simple blogs
 ```
-
+初始化完成后进入目录/安装依赖/启动项目
+```
+cd blogs && npm i && npm run dev
+```
 
 
 
