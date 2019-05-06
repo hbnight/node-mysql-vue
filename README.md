@@ -1,8 +1,6 @@
 # 用node+mysql+vue搭建一个个人博客
 ###### node/webpack/vue-cli/mysql默认已安装并配置完成
 
-
-### 第一天
 ###### (前后端同步开发,会有多次切换,根据个人习惯制定代码编辑方式)
 
 
@@ -33,9 +31,6 @@ node server.js
 
 
 
-
-
-
 ## 前端
 初始化一个blogs项目
 ```
@@ -46,6 +41,19 @@ vue init webpack-simple blogs
 cd blogs && npm i && npm run dev
 ```
 
+## app.vue改成这样
+```
+<template>
+  <div id="app">
+    <router-view />
+  </div>
+</template>
+```
+
+## 安装vue-router flyio
+```
+npm i vue-router flyio
+```
 
 
 
