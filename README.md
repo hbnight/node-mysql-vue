@@ -34,7 +34,7 @@ node server.js
 ## 前端
 初始化一个blogs项目
 ```
-vue init webpack-simple blogs
+vue init webpack blogs
 ```
 初始化完成后进入目录/安装依赖/启动项目
 ```
