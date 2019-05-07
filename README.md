@@ -50,9 +50,9 @@ cd blogs && npm i && npm run dev
 </template>
 ```
 
-## 安装vue-router flyio
+## 安装flyio
 ```
-npm i vue-router flyio
+npm i flyio
 ```
 
 
