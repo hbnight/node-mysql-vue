@@ -2,6 +2,7 @@
 ###### node/webpack/vue-cli/mysql默认已安装并配置完成
 
 ###### (前后端同步开发,会有多次切换,根据个人习惯制定代码编辑方式)
+###### 创建文件凡是以/开头的，均在src目录下
 
 
 ## 后端
@@ -54,6 +55,38 @@ cd blogs && npm i && npm run dev
 ```
 npm i flyio
 ```
+创建/utils/fly.js文件
+
+```
+import Fly from 'flyio'
+
+Fly.config.baseURL = "http://localhost"
+Fly.interceptors.response.use(response=>{
+  return response.data
+})
+
+export default Fly
+```
+
+创建/api/user.js
+```
+import fly from '@/utils/fly'
+
+const User = {
+  _create(){
+    return fly.post('create')
+  },
+  
+  _getList(){
+    return fly.get('getList')
+  },
+}
+
+export default User
+
+```
+
+创建/views/home.vue文件
 
 
 
