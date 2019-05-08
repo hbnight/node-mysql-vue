@@ -29,7 +29,16 @@ node server.js
 
 访问http://192.168.0.108/ 就能看到 server starting...
 
+后台开发时会有多次修改，安装一个热布署插件supervisor
 
+```
+npm i supervisor
+```
+安装完成后执行
+```
+supervisor server.js
+```
+后面再修改后台文件项目会自动更新了
 
 
 ## 前端
@@ -91,10 +100,7 @@ export default User
   <section>
     <el-container class="conBox">
       <el-header class="eheader">
-        <el-row>
-          <el-col :span="20">博客</el-col>
-          <el-col :span="4">退出</el-col>
-        </el-row>
+        
       </el-header>  
       <el-container>
         <el-aside width="180px" class="easide">
@@ -375,7 +381,7 @@ const mysql = require('mysql')
 const sql = mysql.createConnection({
   host:'localhost',
   user:'root',
-  password:'*******',
+  password:'NightFox91',
   database:'blogs'
 })
 
@@ -402,8 +408,8 @@ const sql_user = {
     })
   },
 
-  // 查找用户
-  _select(Obj){
+  // 登录
+  _login(Obj){
     return new Promise((resolve,reject)=>{
       sql.query('SELECT * FROM user WHERE user_name="'+Obj.name+'"',(err,rows)=>{
         console.log(err)
@@ -418,18 +424,353 @@ const sql_user = {
             if(rows.length==0){
               reject("密码错误")
             }else{
-              resolve(rows)
+              resolve(rows[0])
             }
           })
+        }
+      })
+    })
+  },
+
+  // 查看用户信息
+  _getInfo(id){
+    return new Promise((resolve,reject)=>{
+      sql.query('SELECT * FROM user WHERE id="'+id+'"',(err,rows)=>{
+        if(err){
+          reject()
+          return;
+        }
+        if(rows.length==0){
+          reject("无此用户")
+        }else{
+          resolve(rows[0])
         }
       })
     })
   }
 }
 
-
 module.exports = sql_user;
 ```
 
+#### 修改server.js文件，注册/登录/查看用户信息,修改之后的文件为
+```
+const Express = require("express") 
+const app = Express()
+const bodyparser = require('body-parser')   //　用于获取
+const sql_user = require('./sql/sql_user')
+
+app.use(bodyparser.json());
+app.use(bodyparser.urlencoded({
+  extended: false
+}))
+
+
+// 处理跨域
+app.all('*',function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
+  if (req.method == 'OPTIONS') {
+    res.send(200);
+  }
+  else {
+    next();
+  }
+});
+
+// 注册接口
+app.post('/reg',(req,res)=>{
+  sql_user._create(req.body).then(data=>{
+    if(data){
+      res.send({
+        errcode:1,
+        errmsg:"用户名已存在"
+      })
+    }else{
+      res.send({
+        errcode:0,
+        errmsg:"注册成功"
+      })
+    } 
+  })
+})
+
+// 登录接口
+app.post('/login',(req,res)=>{
+  sql_user._login(req.body).then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"登录成功",
+      data
+    })
+  }).catch(e=>{
+    res.send({
+      errcode:1,
+      errmsg:e
+    })
+  })
+})
+
+// 查看用户信息
+app.get('/getUser',(req,res)=>{
+  sql_user._getInfo(req.query.id).then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"成功",
+      data
+    })
+  }).catch(e=>{
+    res.send({
+      errcode:1,
+      errmsg:e
+    })
+  })
+})
+
+app.listen(80)
+```
+
+## 前端
+##### 完善/components/container.vue、/views/home.vue、/views/login.vue、/views/reg.vue四个文件
+
+#### /components/container.vue
+```
+<template>
+  <section>
+    <el-container class="conBox">
+      <el-header class="eheader">
+        <el-row>
+          <el-col :span="20">博客</el-col>
+          <el-col :span="4">
+            <el-button type="text" style="color:#fff" @click="_logOut">退出</el-button>
+          </el-col>
+        </el-row>
+      </el-header>  
+      <el-container>
+        <el-aside width="180px" class="easide">
+          <p>用户名:{{userInfo.user_name}}</p>
+          <p>性别:{{userInfo.sex==1?"男":userInfo.sex==2?"女":"保密"}}</p>
+          <p>年龄:{{userInfo.age||"保密"}}</p>
+          <p>格言:{{userInfo.motto}}</p>
+        </el-aside>
+        <el-main class="emain">
+          <router-view></router-view>
+        </el-main>
+      </el-container>
+    </el-container>  
+  </section>  
+</template>
+
+<script>
+  import user from '@/api/user'
+  export default {
+    name:"container",
+    data(){
+      return{
+        userInfo:{}
+      }
+    },
+    mounted(){
+      if(localStorage.getItem('userInfo')){
+        user._getInfo({id:JSON.parse(localStorage.getItem('userInfo')).id}).then(res=>{
+          if(res.errcode==0){
+            this.userInfo=res.data
+          }
+        })
+      }else{
+        this.$router.push('/login')
+      }
+    },
+    methods:{
+      _logOut(){
+        localStorage.removeItem('userInfo')
+        this.$router.push('/login')
+      }
+    }
+  }
+</script>
+
+<style lang="stylus" scoped>
+  .conBox
+    height 100vh
+    .eheader
+      line-height 60px
+      background #858585
+      text-align center
+    .easide
+      background #e7e7e7
+      box-sizing border-box
+      font-size 14px
+      color #3520d6
+      padding 20px
+    .emain
+      overflow auto
+</style>
+
+```
+#### /views/home.vue
+```
+<template>
+  <section>
+    <h3>主页</h3>
+    <div class="main">
+      <router-link to="/list">文章列表</router-link>
+    </div>
+  </section>
+</template>
+
+<script>
+import user from '@/api/user'
+export default {
+  name:"home",
+  mounted(){
+    if(localStorage.getItem('userInfo')){
+      user._getInfo({id:JSON.parse(localStorage.getItem('userInfo')).id}).then(res=>{
+
+      })
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+  .main
+    .item
+      line-height 30px
+</style>
+```
+
+#### /views/reg.vue
+```
+<template>
+  <section class="regPage">
+    <el-form :model="regForm" label-width="80px" ref="regForm">
+      <el-form-item label="用户名" prop="name">
+        <el-input v-model="regForm.name"></el-input>
+      </el-form-item>
+      <el-form-item label="密码" prop="password">
+        <el-input type="password" v-model="regForm.password"></el-input>
+      </el-form-item>
+      <el-form-item label="性别" prop="sex">
+        <el-select v-model="regForm.sex" placeholder="性别">
+          <el-option label="男" value="1"></el-option>
+          <el-option label="女" value="2"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="年龄" prop="age">
+        <el-input v-model="regForm.age"></el-input>
+      </el-form-item>
+      <el-form-item label="格言" prop="motto">
+        <el-input v-model="regForm.motto"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="_reg">立即注册</el-button>
+        <el-button @click="$router.go(-1)">返回</el-button>
+      </el-form-item>
+      <el-form-item>
+        <router-link to="/login">已有帐号?立即登录</router-link>
+      </el-form-item>
+    </el-form>
+  </section>
+</template>
+
+<script>
+import user from '@/api/user'
+export default {
+  data(){
+    return {
+      regForm:{
+        name:"",
+        password:"",
+        sex:"",
+        age:"",
+        motto:""
+      }
+    }
+  },
+  methods:{
+    _reg(){
+      user._reg(this.regForm).then(res=>{
+        this.$message({
+          message:res.errmsg,
+          type:res.errcode==0?"success":"error"
+        })
+        if(res.errcode==0){
+          this.$refs.regForm.resetFields()
+        }
+      })
+    }
+  }
+}
+</script>
+<style lang="stylus" scoped>
+  .regPage
+    padding 40px 50px
+    width 300px
+</style>
+```
+
+#### /views/login.vue
+```
+<template>
+  <section class="loginPage">
+    <el-form :model="loginForm" ref="loginForm" label-width="80px">
+      <el-form-item label="用户名" prop="name">
+        <el-input v-model="loginForm.name"></el-input>
+      </el-form-item>
+      <el-form-item label="密码" prop="password">
+        <el-input type="password" v-model="loginForm.password"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="_login">立即登录</el-button>
+        <el-button @click="resetForm">重置</el-button>
+      </el-form-item>
+      <el-form-item>
+        <router-link to="/reg">没有帐号?立即注册</router-link>
+      </el-form-item>
+    </el-form>
+  </section>
+</template>
+
+<script>
+import user from '@/api/user'
+export default {
+  data(){
+    return {
+      loginForm:{
+        name:"",
+        password:""
+      }
+    }
+  },
+  methods:{
+    _login(){
+      user._login(this.loginForm).then(res=>{
+        if(res.errcode==0){
+          localStorage.setItem("userInfo",JSON.stringify(res.data));
+          this.$router.push("/home")
+        }else{
+          this.$message({
+            message:res.errmsg,
+            type:"error"
+          })
+        }
+      })
+    },
+    resetForm(){
+      this.$refs.loginForm.resetFields()
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+  .loginPage
+    padding 40px 50px
+    width 300px
+</style>
+```
+到这个，登录/注册/查看信息功能基本能用了.
 
 
