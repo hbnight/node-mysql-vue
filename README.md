@@ -2,7 +2,7 @@
 ###### node/webpack/vue-cli/mysql默认已安装并配置完成
 
 ###### (前后端同步开发,会有多次切换,根据个人习惯制定代码编辑方式)
-###### 创建文件凡是以/开头的，均在src目录下
+###### 创建文件凡是以/开头的，前端均在src目录下，后端均在后端项目主目录(本例在blogs_server下)
 
 
 ## 后端
@@ -110,11 +110,7 @@ export default User
 
 <script>
 export default {
-  data(){
-    return{
-      articles:[]
-    }
-  }
+  name:"container"
 }
 </script>
 
@@ -161,7 +157,6 @@ export default {
 #### 创建/views/reg.vue 和 /views/login.vue
 
 reg.vue
-
 ```
 <template>
   <section class="regPage">
@@ -281,7 +276,6 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import container from '@/components/container'
 Vue.use(Router)
-
 export default new Router({
   routes: [
     {
@@ -351,6 +345,90 @@ app.all('*',function (req, res, next) {
     next();
   }
 });
+```
+到这里前后端就算是有了基础通信了
+
+
+## 数据库
+#### 创建一个blogs库
+```
+CREATE DATABASE blogs;
+```
+#### 进入库并创建users表
+```
+use blogs;
+CREATE TABLE user(
+  id INT AUTO_INCREMENT,
+  user_name VARCHAR(16) NOT NULL,
+  password VARCHAR(125) NOT NULL,
+  age INT,
+  sex INT,
+  motto VARCHAR(100),
+  PRIMARY KEY(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+
+## 后端
+#### 创建/sql/sql_user.js
+```
+const mysql = require('mysql')
+const sql = mysql.createConnection({
+  host:'localhost',
+  user:'root',
+  password:'*******',
+  database:'blogs'
+})
+
+const sql_user = {
+  // 创建用户
+  _create(Obj){
+    return new Promise((resolve,reject)=>{
+      sql.query("SELECT * FROM user WHERE user_name='"+ Obj.name +"'",(err,rows)=>{
+        if(err){
+          reject(err)
+          return;
+        }
+        if(rows.length>0){
+          resolve(rows)
+        }else{
+          sql.query("INSERT INTO user(user_name,password,age,sex,motto) VALUES (?,?,?,?,?)",[Obj.name,Obj.password,Obj.age||0,Obj.sex||0,Obj.motto||""],(err,result)=>{
+            if(err){
+              reject(err)
+            }
+            resolve()
+          })
+        }
+      })
+    })
+  },
+
+  // 查找用户
+  _select(Obj){
+    return new Promise((resolve,reject)=>{
+      sql.query('SELECT * FROM user WHERE user_name="'+Obj.name+'"',(err,rows)=>{
+        console.log(err)
+        if(err){
+          reject()
+          return;
+        }
+        if(rows.length==0){
+          reject("无此用户")
+        }else{
+          sql.query('SELECT * FROM user WHERE user_name="'+Obj.name+'" AND password="'+Obj.password+'"',(err,rows)=>{
+            if(rows.length==0){
+              reject("密码错误")
+            }else{
+              resolve(rows)
+            }
+          })
+        }
+      })
+    })
+  }
+}
+
+
+module.exports = sql_user;
 ```
 
 
