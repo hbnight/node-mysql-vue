@@ -85,6 +85,54 @@ const User = {
 export default User
 
 ```
+#### 创建/components/container.vue文件 主框架
+```
+<template>
+  <section>
+    <el-container class="conBox">
+      <el-header class="eheader">
+        <el-row>
+          <el-col :span="20">博客</el-col>
+          <el-col :span="4">退出</el-col>
+        </el-row>
+      </el-header>  
+      <el-container>
+        <el-aside width="180px" class="easide">
+          
+        </el-aside>
+        <el-main class="emain">
+          <router-view></router-view>
+        </el-main>
+      </el-container>
+    </el-container>  
+  </section>  
+</template>
+
+<script>
+export default {
+  data(){
+    return{
+      articles:[]
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+  .conBox
+    height 100vh
+    .eheader
+      line-height 60px
+      background #858585
+      text-align center
+    .easide
+      background #e7e7e7
+      box-sizing border-box
+      padding 20px
+    .emain
+      overflow auto
+</style>
+```
 
 #### 创建/views/home.vue文件
 ```
@@ -227,18 +275,70 @@ export default {
 </style>
 ```
 
-#### 修改server.js处理下这两个请求(需先安装一个body-parser插件)
+#### 添加路由
+```
+import Vue from 'vue'
+import Router from 'vue-router'
+import container from '@/components/container'
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+    {
+      path: '/',
+      name: 'name',
+      component: container,
+      children:[
+        {
+          path:"home",
+          component:r=>require(['@/views/home'],r)
+        },
+        {
+          path:"list",
+          component:r=>require(['@/views/list'],r)
+        }
+      ]
+    },
+    {
+      path:"/reg",
+      name:"reg",
+      component:r=>require(['@/views/reg'],r)
+    },
+    {
+      path:"/login",
+      name:"login",
+      component:r=>require(['@/views/login'],r)
+    }
+  ]
+})
+```
+
+#### 修改server.js尝试处理下注册和登录两个请求
 ```
 const Express = require("express") 
 const app = Express()
-const bodyparser = require('body-parser')   //　用于获取post参数
 
-app.use(bodyparser.json());
-app.use(bodyparser.urlencoded({
-  extended: false
-}))
+// 注册接口
+app.post('/reg',(req,res)=>{
+  res.send({
+    errcode:0,
+    errmsg:"注册接口请求成功"
+  })
+})
 
+// 登录接口
+app.post('/login',(req,res)=>{
+  res.send({
+    errcode:0,
+    errmsg:"登录接口请求成功"
+  })
+})
 
+app.listen(80)
+```
+
+#### 请求失败,跨域
+```
 // 处理跨域
 app.all('*',function (req, res, next) {
   res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
@@ -251,24 +351,7 @@ app.all('*',function (req, res, next) {
     next();
   }
 });
-
-// 注册接口
-app.post('/reg',(req,res)=>{
-  res.send({
-    errcode:0,
-    errmsg:"注册成功"
-  })
-})
-
-// 登录接口
-app.post('/login',(req,res)=>{
-  res.send({
-    errcode:0,
-    errmsg:"登录成功"
-  })
-})
-
-app.listen(80)
 ```
+
 
 
