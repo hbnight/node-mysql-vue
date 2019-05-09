@@ -3,7 +3,7 @@ const tablesname = "essay"
 const sql = mysql.createConnection({
   host:'localhost',
   user:'root',
-  password:'NightFox91',
+  password:'******',
   database:"blogs"
 })
 
