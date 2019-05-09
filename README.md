@@ -27,7 +27,7 @@ node server.js
 
 顺利的话
 
-访问http://192.168.0.108/ 就能看到 server starting...
+访问http://localhost/ 就能看到 server starting...
 
 后台开发时会有多次修改，安装一个热布署插件supervisor
 
