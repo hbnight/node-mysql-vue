@@ -381,7 +381,7 @@ const mysql = require('mysql')
 const sql = mysql.createConnection({
   host:'localhost',
   user:'root',
-  password:'NightFox91',
+  password:'******',
   database:'blogs'
 })
 
@@ -793,7 +793,7 @@ const tablesname = "essay"
 const sql = mysql.createConnection({
   host:'localhost',
   user:'root',
-  password:'NightFox91',
+  password:'******',
   database:"blogs"
 })
 
