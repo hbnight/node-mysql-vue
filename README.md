@@ -774,3 +774,395 @@ export default {
 到这个，登录/注册/查看信息功能基本能用了.
 
 
+
+#### 新建一个文章库
+```
+ CREATE TABLE essay(
+   id INT AUTO_INCREMENT,
+   title VARCHAR(16) NOT NULL,
+   author_id INT NULL,
+   content VARCHAR(500) NOT NULL,
+   PRIMARY KEY(id)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+
+#### 新建数据库操作文件/sql/sql_essay.js
+```
+const mysql = require('mysql')
+const tablesname = "essay"
+const sql = mysql.createConnection({
+  host:'localhost',
+  user:'root',
+  password:'NightFox91',
+  database:"blogs"
+})
+
+const sql_essay = {
+  // 创建文章
+  _create(Obj){
+    return new Promise((resolve,reject)=>{
+      if(!Obj.title){
+        reject("标题必需")
+        return;
+      }
+      if(!Obj.content){
+        reject("内容必需")
+        return;
+      }
+      sql.query("INSERT INTO "+tablesname+"(title,content,author_id) VALUES (?,?,?)",[Obj.title,Obj.content,Obj.author_id||0],(err,result)=>{
+        if(err){
+          reject(err)
+        }
+        resolve()
+      })
+    })
+  },
+
+  // 文章列表
+  _getList(){
+    return new Promise((resolve,reject)=>{
+      sql.query('SELECT title,author_id,id FROM essay',(err,row)=>{
+        if(err){
+          reject(err)
+        }
+        row.map((v,i)=>{
+          sql.query('SELECT user_name,id FROM user WHERE id='+v.author_id,(errs,rows)=>{
+            v.author=rows[0]||{}
+            if(i==row.length-1){
+              resolve(row)
+            }
+          })
+        })
+      })
+    })
+  },
+
+  // 删除文章
+  _deleteEssay(id){
+    return new Promise((resolve,reject)=>{
+      sql.query('SELECT id FROM '+tablesname+' WHERE id='+id,(err,row)=>{
+        if(err){
+          reject("删除失败")
+        }
+        if(row.length==0){
+          reject("该文章已被删除")
+        }
+        sql.query('DELETE FROM '+tablesname+' WHERE id='+id,(err,row)=>{
+          if(err){
+            reject("删除失败")
+          }
+          resolve()
+        })
+      })
+    })
+  },
+
+  // 查看详情
+  _detail(id){
+    return new Promise((resolve,reject)=>{
+      sql.query('SELECT * FROM '+tablesname+' WHERE id="'+id+'"',(err,rows)=>{
+        if(err){
+          reject()
+          return;
+        }
+        if(rows.length==0){
+          reject("无此文章或已被删除")
+        }else{
+          resolve(rows[0])
+        }
+      })
+    })
+  }
+}
+
+module.exports = sql_essay;
+```
+
+#### server.js编写文章相关接口(创建/列表/详情)
+```
+// 添加文章
+app.post('/essayCreate',(req,res)=>{
+  sql_essay._create(req.body).then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"添加成功"
+    })
+  }).catch(e=>{
+    res.send({
+      errcode:1,
+      errmsg:e
+    })
+  })
+})
+
+// 文章列表
+app.get('/essayList',(req,res)=>{
+  sql_essay._getList().then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"",
+      data
+    })
+  })
+})
+
+// 删除文章
+app.post('/deleteEssay',(req,res)=>{
+  sql_essay._deleteEssay(req.body.id).then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"删除成功"
+    })
+  }).catch(e=>{
+    res.send({
+      errcode:0,
+      errmsg:e
+    })
+  })
+})
+
+// 文章详情
+app.get('/essayDetail',(req,res)=>{
+  sql_essay._detail(req.query.id).then(data=>{
+    res.send({
+      errcode:0,
+      errmsg:"",
+      data
+    })
+  })
+})
+```
+
+#### 添加前端接口文件/api/essay.js
+```
+import fly from 'flyio'
+
+const essay={
+  create(data){
+    return fly.post('/essayCreate',data)
+  },
+  getList(){
+    return fly.get('/essayList')
+  },
+  detail(data){
+    return fly.get('/essayDetail',data)
+  },
+  delete(data){
+    return fly.post('/deleteEssay',data)
+  }
+}
+
+export default essay
+```
+
+#### 添加文章页面/essay/create.vue、/essay/list.vue、/essay/detail.vue
+#### /essay/list.vue
+```
+<template>
+  <section class="essayList">
+    <h3>文章列表</h3>
+    <el-button @click="$router.push('/essayCreate')">+添加文章</el-button>
+    <el-table :data="essayList">
+      <el-table-column prop="title" label="标题"></el-table-column>
+      <el-table-column prop="author.user_name" label="作者"></el-table-column>
+      <el-table-column label="操作">
+        <template slot-scope="scoped">
+          <el-button type="text" @click="_detail(scoped.row)">查看详情</el-button>
+          <el-button type="text" style="color:#ff4949" @click="_delete(scoped.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </section>  
+</template>
+
+<script>
+import essay from '@/api/essay'
+export default {
+  data(){
+    return{
+      essayList:[]
+    }
+  },
+  methods:{
+    _delete(item){
+      this.$confirm("是否删除该文章?").then(()=>{
+        essay.delete({id:item.id}).then(res=>{
+          this.$message({
+            message:res.errmsg,
+            type:res.errcode==0?"success":"error"
+          })
+          if(res.errcode==0){
+            this.getList();
+          }
+        })
+      })
+    },
+    _detail(item){
+      this.$router.push('/essayDetail/'+item.id)
+    },
+    getList(){
+      essay.getList().then(res=>{
+        if(res.errcode==0){
+          this.essayList=res.data
+        }
+      })
+    }
+  },
+  mounted(){
+    this.getList()
+  }
+}
+</script>
+```
+
+#### /essay/create.vue
+```
+<template>
+  <section>
+    <h2>新建文章</h2>  
+    <el-form :model="essayMsg" label-width="50px" style="max-width:600px">
+      <el-form-item label="标题" prop="title">
+        <el-input v-model="essayMsg.title" style="width:400px"></el-input>
+      </el-form-item>
+      <el-form-item label="正文" prop="password">
+        <textarea v-model="essayMsg.content" style="width:100%;resize:none;height:400px"></textarea>
+      </el-form-item>
+      <el-form-item>
+        <el-button @click="create">添加</el-button>
+        <el-button>取消</el-button>
+      </el-form-item>
+    </el-form>
+  </section>  
+</template>
+
+<script>
+import essay from '@/api/essay'
+export default {
+  data(){
+    return{
+      essayMsg:{
+        title:"",
+        content:""
+      }
+    }
+  },
+  methods:{
+    create(){
+      this.essayMsg.author_id = JSON.parse(localStorage.getItem("userInfo")).id
+      essay.create(this.essayMsg).then(res=>{
+        this.$message({
+          message:res.errmsg,
+          type:res.errcode==0?"success":"error"
+        })
+        if(res.errcode==0){
+          this.$router.back()
+        }
+      })
+    }
+  }
+}
+</script>
+```
+
+#### /essay/detail.vue
+```
+<template>
+  <section>
+    <center>
+      <h3>{{detail.title}}</h3>
+      <p v-if="detail.author" class="authorMsg">作者: {{detail.author.user_name}}</p>
+    </center>
+    <div class="contentMsg">
+      <div class="contentItem" v-for="(item,i) in detail.content" :key="i">
+        {{item}}
+      </div>
+    </div>
+  </section>  
+</template>
+
+<script>
+import essay from '@/api/essay'
+export default {
+  data(){
+    return {
+      detail:{
+        title:"",
+        content:[]
+      }
+    }
+  },
+  methods:{
+    essayDetail(id){
+      essay.detail({id}).then(res=>{
+        res.data.content = res.data.content.split(/\n/);
+        this.detail=res.data
+      })
+    }
+  },
+  mounted(){
+    this.essayDetail(this.$route.params.id)
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+  .contentItem
+    text-indent 2em
+    line-height 30px
+    margin-bottom 20px
+  .authorMsg
+    border-bottom 1px solid #c7c7c7
+    font-size 12px
+    line-height 30px
+</style>
+```
+
+#### 修改路由文件/router/index.js
+```
+import Vue from 'vue'
+import Router from 'vue-router'
+import container from '@/components/container'
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+    {
+      path: '/',
+      name: 'name',
+      component: container,
+      children:[
+        {
+          path:"home",
+          component:r=>require(['@/views/home'],r)
+        },
+        {
+          path:"essaylist",
+          component:r=>require(['@/views/essay/list'],r)
+        },
+        {
+          path:"essayCreate",
+          component:r=>require(['@/views/essay/create'],r)
+        },
+        {
+          path:"essayDetail/:id",
+          component:r=>require(['@/views/essay/detail'],r)
+        }
+      ]
+    },
+    {
+      path:"/reg",
+      name:"reg",
+      component:r=>require(['@/views/reg'],r)
+    },
+    {
+      path:"/login",
+      name:"login",
+      component:r=>require(['@/views/login'],r)
+    }
+  ]
+})
+
+```
+
+行了，就这样。
+
